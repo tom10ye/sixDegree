@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include <unordered_map>
+#include <set>
 #include "ActorNode.h"
 #include "Edge.h"
 #include "Movie.h"
@@ -26,6 +27,7 @@ protected:
     // Maybe add class data structure(s) here
     unordered_map<string, ActorNode*> Actors;
     unordered_map<string, Movie*> Movies;
+    set<int> ordered_years;
 
 public:
     ActorGraph(void);
@@ -52,10 +54,17 @@ public:
 
     void BFS(string start_actor_name, string end_actor_name);
 
+    void Dijkstra(string start_actor_name,string end_actor_name);
+
     void resetGraph();
 
     void backTrackOut(string start_actor_name, string end_actor_name, ofstream& out);
   
+    int BFSFind(string start_actor_name, string end_actor_name);
+
+    bool BFSYear(string start_actor_name, string end_actor_name, int UpperLimitYear);
+
+    bool nameExist(string start_actor_name, string end_actor_name);
 };
 
 

@@ -17,11 +17,20 @@ public:
 	ActorNode* prev;
 	Movie* prevMovie;
 
+	bool done;
+
 	ActorNode(string n, int d);
 
 	~ActorNode();
 
 	void resetNode();
+};
+
+class ActorNodeComp{
+public:
+	bool operator()(pair<ActorNode*, int>& A, pair<ActorNode*, int>& B) const {
+        return A.second > B.second;
+    }
 };
 
 #endif

@@ -112,7 +112,7 @@ void ActorGraph::printSta(){
 }
 
 void ActorGraph::insertInfo(string actor_name, string movie_title, int movie_year){
-    
+    //cout<<"begin inserting info"<<endl;
     //first update in the database of ActorGraph
     //if the actor or movie has never been inserted before, initialize the entity and store the ptr into the database
     
@@ -154,6 +154,10 @@ void ActorGraph::insertInfo(string actor_name, string movie_title, int movie_yea
 
     //After all the connections have been made, add current actor on the cast list. To avoid self cycle.
     mov->casts[actor_name] =currActorNode;
+
+    //
+    ordered_years.insert(movie_year);
+    //cout<<"inserting info compl"<<endl;
 }
 
 //Need to do:
@@ -238,6 +242,59 @@ void ActorGraph::resetGraph(){
     }
 }
 
+void ActorGraph::Dijkstra(string start_actor_name, string end_actor_name){
+    //initialize the graph
+    resetGraph();
+
+    //First take out the startActorNode according to his name
+    //set the distance to be0
+    ActorNode* startNode = Actors[start_actor_name];
+    startNode->distance = 0;
+
+    //Initialize PQ for Dijkstra
+    priority_queue<pair<ActorNode*, int>, vector<pair<ActorNode*, int>>,ActorNodeComp> PQ;
+
+    //push the startActorNode into queue
+    pair<ActorNode*, int> startPair(startNode, 0);
+    PQ.push(startPair);
+
+    while(!PQ.empty()){
+        //pop out from PQ
+        pair<ActorNode*, int> currPair = PQ.top();
+        ActorNode* currNode = currPair.first;
+        PQ.pop();
+        if(currNode->done == false){
+
+            currNode->done = true;
+
+            //traverse through all the edges of currNode
+            auto it = currNode->edges.begin();
+            auto ed = currNode->edges.end();
+            while(it!=ed){
+                Edge* currEdge = it->second;
+                ActorNode* neiNode = currEdge->end;
+
+                int edgeWeight = 2015-(currEdge->movie->year) +1;
+                int newDist = currNode->distance + edgeWeight;
+
+                //if neighbourNode's distance is not minimum
+                if(newDist < neiNode->distance ){
+                    neiNode->prev = currNode;
+                    neiNode->prevMovie = currEdge->movie;
+                    neiNode->distance = newDist;
+
+                    //push newPair to the PQ
+                    pair<ActorNode*, int> nextPair(neiNode, newDist);
+                    PQ.push(nextPair);
+                }
+
+                it++;
+            }
+        }
+    }
+
+}
+
 void ActorGraph::backTrackOut(string start_actor_name, string end_actor_name, ofstream& out){
     
     /*
@@ -258,11 +315,11 @@ void ActorGraph::backTrackOut(string start_actor_name, string end_actor_name, of
         currNode = currNode->prev;
     }
 
-    //check if the stack size matach the distance of the path
-    if(stack.size() != correctDist){
-        out<<"Wrong size of stack when backtrack"<<endl;
-        return;
-    }
+    //check if the stack size matach the distance of the path ,use for bfs
+    // if(stack.size() != correctDist){
+    //     out<<"Wrong size of stack when backtrack"<<endl;
+    //     return;
+    // }
 
     //after the iterations, here,current node is the start_actor's node,first print its name
     out<< "(" << currNode->name << ")";
@@ -276,4 +333,73 @@ void ActorGraph::backTrackOut(string start_actor_name, string end_actor_name, of
     }
 
     out<<endl;
+}
+
+int ActorGraph::BFSFind(string start_actor_name, string end_actor_name){
+    auto it = ordered_years.begin();
+    auto ed = ordered_years.end();
+    while(it!=ed){
+        int UpperLimitYear = *it;
+        //cout<<UpperLimitYear<<endl;
+        if(BFSYear(start_actor_name, end_actor_name, UpperLimitYear) == true) return UpperLimitYear;
+        it++;
+    }
+    return 9999;
+}
+
+bool ActorGraph::BFSYear(string start_actor_name, string end_actor_name, int UpperLimitYear){
+    //initialize the graph
+    resetGraph();
+
+    //First take out the startActorNode according to his name
+    //set the distance to be 0
+    ActorNode* startNode = Actors[start_actor_name];
+    startNode->distance = 0;
+
+    //Initialize the queue for BFS
+    queue<ActorNode*> Q;
+
+    //push the startActorNode into queue
+    Q.push(startNode);
+
+    while(!Q.empty()){
+        //pop out from queue
+        ActorNode* currNode = Q.front();
+        Q.pop();
+
+        //traverse through all the edges of currNode
+        auto it = currNode->edges.begin();
+        auto ed = currNode->edges.end();
+        while(it!=ed){
+            Edge* currEdge = it->second;
+
+            //if the current edge is valid when this year, it can used for BFS, or we skip it
+            if(currEdge->movie->year <= UpperLimitYear){
+                ActorNode* neiNode = currEdge->end;
+
+                //if neighbourNode has never be visited before
+                if(neiNode->distance == INT_MAX){
+                    neiNode->prev = currNode;
+                    neiNode->prevMovie = currEdge->movie;
+                    neiNode->distance = currNode->distance + 1;
+
+                    //after setting all the parameters of the node, check if the node is the end_actor, then break the nested loop
+                    if(neiNode->name == end_actor_name) goto breakloop;
+
+                    //push node to the queue
+                    Q.push(neiNode);
+                }
+            }
+
+            it++;
+        }
+    }
+    return false;
+    breakloop: return true;
+}
+
+bool ActorGraph::nameExist(string start_actor_name, string end_actor_name){
+    if(Actors.count(start_actor_name) != 0 && Actors.count(end_actor_name) != 0){
+        return true;
+    }else return false;
 }

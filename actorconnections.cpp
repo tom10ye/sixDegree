@@ -5,19 +5,23 @@
 #include <vector>
 #include <queue>
 #include <stack>
+#include <stdio.h>
+#include <string.h>
+#include <string>
+#include <cstring>
 #include "ActorGraph.h"
 #include "ActorNode.h"
 #include "Edge.h"
 #include "Movie.h"
+#include "UnionFind.h"
 
 using namespace std;
 
 int main(int argc, char* argv[]){
-	
-	//1.Initialization
-	//Input format:  movie_casts.tsv u/w pairs output
-	char* infile = argv[3];
-	char* outfile = argv[4];
+	//Input format:  movie_casts.tsv pairs output bfs/ufind
+
+	char* infile = argv[2];
+	char* outfile = argv[3];
 
 	ifstream in;
 	ofstream out;
@@ -25,29 +29,29 @@ int main(int argc, char* argv[]){
 	in.open(infile, ios::in);
 	out.open(outfile, ios::out);
 
-	//u means unweithed, if input is u then the statement is false, we do not use weighted edges
-	bool use_weighted_edges;
-	if(*argv[2] == 'u'){
-		use_weighted_edges = false;
-	}else if(*argv[2] == 'w'){
-		use_weighted_edges = true;
-	}else{
-		cout<<"please input valid weighted/unweighted flag"<<endl;
-		return 0;
-	}
+	bool useBFS = (strcmp(argv[4],"bfs") == 0);
 
-	ActorGraph* G = new ActorGraph();
+	
 	cout<<"Initialization Completed!"<<endl;
 
 
 	//2.Load data and print statistics
-	G->loadFromFile(argv[1],use_weighted_edges);
-	cout<<"Load Completed!"<<endl;
+	ActorGraph* G = new ActorGraph();
+	UnionFind* UF =  new UnionFind();
+	if(useBFS == true){
+		//ActorGraph* G = new ActorGraph();
+		G->loadFromFile(argv[1],false);
+		cout<<"Load Completed!"<<endl;
+	}else{
+        UF->loadFromFile(argv[1]);
+        cout<<"Load Completed!"<<endl;
+	}
+	
 	//G->printSta();
 	
 
 	//3.Iteratively find the shortest path of each pairs
-	out << "(actor)--[movie#@year]-->(actor)--..." << endl;
+	out << "Actor1\t" << "Actor2\t" << "Year" << endl;
 	bool have_header = true;
 	while(in){
 		//cout<<"interative"<<endl;
@@ -75,31 +79,46 @@ int main(int argc, char* argv[]){
 
         string start_actor_name = record[0];
         string end_actor_name = record[1];
-        if(G->nameExist(start_actor_name, end_actor_name) == false){
-        	out << "name not exist in the graph" <<endl;
-        	continue;
+
+        // if(G->nameExist(start_actor_name, end_actor_name) == false){
+        // 	out << start_actor_name << "\t" << end_actor_name << "\t" << "9999";
+        // 	continue;
+        // }
+
+        //UF name exist function
+
+        if(start_actor_name == end_actor_name){
+        	cout<<"Please input two different names!"<<endl;
+        	return -1;
         }
 
-        G->resetGraph();
-
-        if(use_weighted_edges == false){
-        	//cout<<"Begin BFS"<<endl;
+        int beginYear;
+        if(useBFS == true){
+        	G->resetGraph();
+        	//cout<<"Begin BFSFind"<<endl;
         	/*
 			Here we first call BFS function to set up all the distance/prev/prevMovie of the nodes in the path
 			And at last call backtrack function to print out the path
         	*/
-        	G->BFS(start_actor_name,end_actor_name);
-        	//cout<<"BFS Completed!"<<endl;
+        	beginYear = G->BFSFind(start_actor_name,end_actor_name);
+        	//cout<<"BFSFind Completed!"<<endl;
         }else{
-        	G->Dijkstra(start_actor_name,end_actor_name);
+        	//cout<<"enter unionfind"<<endl;
+        	UF->reset();
+        	beginYear = UF->findBeginYear(start_actor_name,end_actor_name);
+        	
         }
-
-        G->backTrackOut(start_actor_name,end_actor_name,out);
+        out << start_actor_name << "\t" << end_actor_name << "\t" << beginYear << endl; 
         //cout<<"backTrackOut Completed!"<<endl;
 
 	}
 
+	
 	delete(G);
+	
+	delete(UF);
+	
+	
 	in.close();
 	out.close();
 	return 0;
