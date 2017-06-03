@@ -12,6 +12,8 @@
 
 #include <iostream>
 #include <unordered_map>
+#include <unordered_set>
+#include <map>
 #include <set>
 #include "ActorNode.h"
 #include "Edge.h"
@@ -28,6 +30,10 @@ protected:
     unordered_map<string, ActorNode*> Actors;
     unordered_map<string, Movie*> Movies;
     set<int> ordered_years;
+
+    map<int,map<string, Movie*>> MovieTable;
+
+    set<Edge*> allEdges;
 
 public:
     ActorGraph(void);
@@ -46,9 +52,13 @@ public:
      */
     bool loadFromFile(const char* in_filename, bool use_weighted_edges);
 
+    bool loadFromFileConnection(const char* in_filename);
+
     void printSta();
 
     void insertInfo(string actor_name, string movie_title, int movie_year);
+
+    void insertInfoConnection(string actor_name, string movie_title, int movie_year);
 
     void insertEdgeForStart(ActorNode* start, ActorNode* end, Movie* m);
 
@@ -62,9 +72,15 @@ public:
   
     int BFSFind(string start_actor_name, string end_actor_name);
 
-    bool BFSYear(string start_actor_name, string end_actor_name, int UpperLimitYear);
+    bool isConnected(string start_actor_name, string end_actor_name);
 
     bool nameExist(string start_actor_name, string end_actor_name);
+
+    void addEdge(int currentYear);
+
+    void removeAllEdges();
+
+    unordered_map<string, int> findRes(unordered_set<string> uniquePairs);
 };
 
 

@@ -44,6 +44,13 @@ ActorGraph::~ActorGraph(){
         delete(it_mov->second);
         it_mov++;
     }
+
+    for(auto it=MovieTable.begin(); it!=MovieTable.end(); it++){
+        map<string, Movie*> movMap = it->second;
+        for(auto it2=movMap.begin(); it2!=movMap.end(); it2++){
+            delete(it2->second);
+        }
+    }
 }
 
 bool ActorGraph::loadFromFile(const char* in_filename, bool use_weighted_edges) {
@@ -99,6 +106,61 @@ bool ActorGraph::loadFromFile(const char* in_filename, bool use_weighted_edges) 
 
     return true;
 }
+
+bool ActorGraph::loadFromFileConnection(const char* in_filename){
+    // Initialize the file stream
+    ifstream infile(in_filename);
+
+    bool have_header = false;
+  
+    // keep reading lines until the end of file is reached
+    while (infile) {
+        string s;
+    
+        // get the next line
+        if (!getline( infile, s )) break;
+
+        if (!have_header) {
+            // skip the header
+            have_header = true;
+            continue;
+        }
+
+        istringstream ss( s );
+        vector <string> record;
+
+        while (ss) {
+            string next;
+      
+            // get the next string before hitting a tab character and put it in 'next'
+            if (!getline( ss, next, '\t' )) break;
+
+            record.push_back( next );
+        }
+    
+        if (record.size() != 3) {
+            // we should have exactly 3 columns
+            continue;
+        }
+
+        string actor_name(record[0]);
+        string movie_title(record[1]);
+        int movie_year = stoi(record[2]);
+    
+        // we have an actor/movie relationship, now what?
+        //insert the information into the graph
+        insertInfoConnection(actor_name, movie_title, movie_year);
+    }
+
+    if (!infile.eof()) {
+        cerr << "Failed to read " << in_filename << "!\n";
+        return false;
+    }
+    infile.close();
+
+    return true;
+}
+
 
 void ActorGraph::printSta(){
     auto it = Actors.begin();
@@ -160,6 +222,24 @@ void ActorGraph::insertInfo(string actor_name, string movie_title, int movie_yea
     //cout<<"inserting info compl"<<endl;
 }
 
+void ActorGraph::insertInfoConnection(string actor_name, string movie_title, int movie_year){
+    if(Actors.count(actor_name) == 0){
+        ActorNode* node = new ActorNode(actor_name, -1);
+        Actors[actor_name] = node;
+    }
+
+    if(MovieTable[movie_year].count(movie_title) == 0){
+        Movie* mov = new Movie(movie_title,movie_year);
+        MovieTable[movie_year][movie_title] = mov;
+    }
+
+    ActorNode* currActorNode = Actors[actor_name];
+    Movie* mov = MovieTable[movie_year][movie_title];
+    mov->casts[actor_name] =currActorNode;
+    //
+    ordered_years.insert(movie_year);
+}
+
 //Need to do:
 //the index of edges should be identified uniquely movietitle+endname
 //the title of film is not unique, title+year
@@ -179,12 +259,16 @@ void ActorGraph::insertEdgeForStart(ActorNode* start, ActorNode* end, Movie* m){
     //Note that multiple movies made in different years can have the same name
     //such as A and B were both casted in movie M(1994), M(2000), M(2004), which are three different edges
     //So we use title+year+end to be the unique id of edge
+    if(start == end) return;
+
     string edgeID = m->title + to_string(m->year) + end->name;
 
     //if this edge has been added before then return, however this case will not happen, think about it
     if(start->edges.count(edgeID) != 0) return;
     Edge* edge = new Edge(start, end, m);
     start->edges[edgeID] = edge;
+    edge->weight = (2015 - m->year) + 1;
+    allEdges.insert(edge);
 }
 
 void ActorGraph::BFS(string start_actor_name, string end_actor_name){
@@ -252,21 +336,25 @@ void ActorGraph::Dijkstra(string start_actor_name, string end_actor_name){
     startNode->distance = 0;
 
     //Initialize PQ for Dijkstra
-    priority_queue<pair<ActorNode*, int>, vector<pair<ActorNode*, int>>,ActorNodeComp> PQ;
+    priority_queue<ActorNode*, vector<ActorNode*>,ActorNodeComp> PQ;
 
     //push the startActorNode into queue
-    pair<ActorNode*, int> startPair(startNode, 0);
-    PQ.push(startPair);
+    PQ.push(startNode);
+
+    ActorNode* currNode;
 
     while(!PQ.empty()){
         //pop out from PQ
-        pair<ActorNode*, int> currPair = PQ.top();
-        ActorNode* currNode = currPair.first;
+        currNode = PQ.top();
         PQ.pop();
+        if(currNode->name == end_actor_name) break;
         if(currNode->done == false){
 
             currNode->done = true;
-
+            int currDistance = currNode->distance;
+            //if what pop out is the end node for the first pop time, then it must be the shortest path pair,
+            //we found that and just break the loop to avoid redundant traverse through the whole graph
+            
             //traverse through all the edges of currNode
             auto it = currNode->edges.begin();
             auto ed = currNode->edges.end();
@@ -274,18 +362,19 @@ void ActorGraph::Dijkstra(string start_actor_name, string end_actor_name){
                 Edge* currEdge = it->second;
                 ActorNode* neiNode = currEdge->end;
 
-                int edgeWeight = 2015-(currEdge->movie->year) +1;
-                int newDist = currNode->distance + edgeWeight;
+                int edgeWeight = currEdge->weight;
+                int newNeiDist = currDistance + edgeWeight;
 
                 //if neighbourNode's distance is not minimum
-                if(newDist < neiNode->distance ){
+                if(newNeiDist < neiNode->distance ){
                     neiNode->prev = currNode;
                     neiNode->prevMovie = currEdge->movie;
-                    neiNode->distance = newDist;
+                    neiNode->distance = newNeiDist;
 
                     //push newPair to the PQ
-                    pair<ActorNode*, int> nextPair(neiNode, newDist);
-                    PQ.push(nextPair);
+                    //pair<ActorNode*, int> nextPair(neiNode, newNeiDist);
+                    PQ.push(neiNode);
+                    
                 }
 
                 it++;
@@ -339,15 +428,64 @@ int ActorGraph::BFSFind(string start_actor_name, string end_actor_name){
     auto it = ordered_years.begin();
     auto ed = ordered_years.end();
     while(it!=ed){
-        int UpperLimitYear = *it;
+        int currentYear = *it;
+        addEdge(currentYear);
+        //cout<<"add Edge completed"<<endl;
         //cout<<UpperLimitYear<<endl;
-        if(BFSYear(start_actor_name, end_actor_name, UpperLimitYear) == true) return UpperLimitYear;
+        if(isConnected(start_actor_name, end_actor_name) == true) return currentYear;
         it++;
     }
     return 9999;
 }
 
-bool ActorGraph::BFSYear(string start_actor_name, string end_actor_name, int UpperLimitYear){
+void ActorGraph::addEdge(int currentYear){
+    auto movMap = MovieTable[currentYear];
+
+    auto it = movMap.begin();
+    auto ed = movMap.end();
+    while(it != ed){
+        Movie* mov = it->second;
+        for(auto itcast1 = mov->casts.begin(); itcast1 != mov->casts.end(); itcast1++){
+            ActorNode* currActorNode = itcast1->second;
+            auto itcast2 = mov->casts.begin();
+            auto edcast2 = mov->casts.end();
+            while(itcast2 != edcast2){
+                ActorNode* endActorNode = itcast2->second;
+                insertEdgeForStart(currActorNode, endActorNode, mov);
+                insertEdgeForStart(endActorNode, currActorNode, mov);
+                itcast2++;
+            }
+        }
+        it++;
+    }
+}
+
+void ActorGraph::removeAllEdges(){
+
+    for(auto it = allEdges.begin(); it != allEdges.end(); it++){
+        delete(*it);
+    }
+    allEdges.clear();
+    // cout<<"removing all edges completed"<<endl;
+
+    auto it = Actors.begin();
+    auto ed = Actors.end();
+    while(it!=ed){
+        ActorNode* currNode = it->second;
+        // auto it_edge = currNode->edges.begin();
+        // auto ed_edge = currNode->edges.end();
+        // while(it_edge!=ed_edge){ 
+        //     delete(it_edge->second);
+        //     it_edge++;
+        // }
+
+        currNode->edges.clear();
+        it++;
+    }
+    
+}
+
+bool ActorGraph::isConnected(string start_actor_name, string end_actor_name){
     //initialize the graph
     resetGraph();
 
@@ -374,7 +512,7 @@ bool ActorGraph::BFSYear(string start_actor_name, string end_actor_name, int Upp
             Edge* currEdge = it->second;
 
             //if the current edge is valid when this year, it can used for BFS, or we skip it
-            if(currEdge->movie->year <= UpperLimitYear){
+            //if(currEdge->movie->year <= UpperLimitYear){
                 ActorNode* neiNode = currEdge->end;
 
                 //if neighbourNode has never be visited before
@@ -389,7 +527,7 @@ bool ActorGraph::BFSYear(string start_actor_name, string end_actor_name, int Upp
                     //push node to the queue
                     Q.push(neiNode);
                 }
-            }
+            //}
 
             it++;
         }
@@ -402,4 +540,53 @@ bool ActorGraph::nameExist(string start_actor_name, string end_actor_name){
     if(Actors.count(start_actor_name) != 0 && Actors.count(end_actor_name) != 0){
         return true;
     }else return false;
+}
+
+unordered_map<string, int> ActorGraph::findRes(unordered_set<string> uniquePairs){
+    unordered_map<string, int> resMap;
+    auto it = ordered_years.begin();
+    auto ed = ordered_years.end();
+    while(it!=ed){
+        int currentYear = *it;
+        addEdge(currentYear);
+        //cout<<"add Edge completed"<<endl;
+        //cout<<UpperLimitYear<<endl;
+        vector<string> toBeErase;
+        for(auto it = uniquePairs.begin(); it != uniquePairs.end(); it++){
+            string s = *it;
+
+            istringstream ss(s);
+            vector <string> record;
+
+            while(ss){
+                string next;
+                if (!getline( ss, next, '\t' )) break;
+                record.push_back( next );
+            }
+            //cout<<"get record Completed"<<endl;
+            // if (record.size() != 2) {
+            //     continue;
+            // }
+
+            string start_actor_name = record[0];
+            string end_actor_name = record[1];
+
+            // string start_actor_name = it->first;
+            // string end_actor_name = it->second;
+            if(isConnected(start_actor_name, end_actor_name) == true){
+                resMap[start_actor_name + end_actor_name] = currentYear;
+                toBeErase.push_back(*it);
+            }
+        }
+
+        for(int i=0;i<toBeErase.size();i++){
+            uniquePairs.erase(toBeErase[i]);
+        }
+
+        if(uniquePairs.empty() == true) break;
+        
+
+        it++;
+    }
+    return resMap;
 }

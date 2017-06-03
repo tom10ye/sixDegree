@@ -28,8 +28,8 @@ public:
 
 class ActorNodeComp{
 public:
-	bool operator()(pair<ActorNode*, int>& A, pair<ActorNode*, int>& B) const {
-        return A.second > B.second;
+	bool operator()(ActorNode*& A, ActorNode*& B) const {
+        return A->distance > B->distance;
     }
 };
 

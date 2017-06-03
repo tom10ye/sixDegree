@@ -1,7 +1,7 @@
 #ifndef EDGE_H
 #define EDGE_H
 
-//#include "Movie.h"
+//include "Movie.h"
 
 using namespace std;
 
@@ -12,6 +12,7 @@ public:
 	Movie* movie;
 	ActorNode* start;
 	ActorNode* end;
+	int weight;
 
 	Edge(ActorNode* s, ActorNode* e, Movie* m);
 

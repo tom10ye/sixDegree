@@ -13,7 +13,9 @@ using namespace std;
 class UnionFind{
 public:
 	unordered_map<string, ActorNode*> Actors;
-	map<string, Movie*> oByYear_Movies;
+	map<int,map<string, Movie*>> MovieTable;
+	//map<string, Movie*> oByYear_Movies;
+	set<int> ordered_years;
 
 	UnionFind();
 	~UnionFind();
@@ -29,6 +31,12 @@ public:
 	void insertInfo(string actor_name, string movie_title, int movie_year);
 
 	void reset();
+
+	unordered_map<string, int> findRes(unordered_set<string> uniquePairs);
+
+	bool isConnected(string start_actor_name, string end_actor_name);
+
+	void mergeAll(int currentYear);
 };
 
 

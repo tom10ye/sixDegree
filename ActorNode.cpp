@@ -4,6 +4,8 @@ ActorNode::ActorNode(string n, int d){
 	name = n;
 	distance = d;
 	done = false;
+	prev = NULL;
+	prevMovie = NULL;
 }
 
 ActorNode::~ActorNode(){

@@ -9,6 +9,7 @@
 #include "ActorNode.h"
 #include "Edge.h"
 #include "Movie.h"
+#include "util.h"
 
 using namespace std;
 
@@ -49,6 +50,10 @@ int main(int argc, char* argv[]){
 	//3.Iteratively find the shortest path of each pairs
 	out << "(actor)--[movie#@year]-->(actor)--..." << endl;
 	bool have_header = true;
+
+	Timer T;
+	long time_duration;
+	T.begin_timer();
 	while(in){
 		//cout<<"interative"<<endl;
 		string s;
@@ -80,7 +85,7 @@ int main(int argc, char* argv[]){
         	continue;
         }
 
-        G->resetGraph();
+        //G->resetGraph();
 
         if(use_weighted_edges == false){
         	//cout<<"Begin BFS"<<endl;
@@ -91,6 +96,7 @@ int main(int argc, char* argv[]){
         	G->BFS(start_actor_name,end_actor_name);
         	//cout<<"BFS Completed!"<<endl;
         }else{
+        	G->resetGraph();
         	G->Dijkstra(start_actor_name,end_actor_name);
         }
 
@@ -98,6 +104,9 @@ int main(int argc, char* argv[]){
         //cout<<"backTrackOut Completed!"<<endl;
 
 	}
+
+	time_duration = T.end_timer();
+	cout<<"time:"<<time_duration<<"(nanosecond)  =  "<<time_duration/double(1000000000)<<"(second)"<<endl;
 
 	delete(G);
 	in.close();
