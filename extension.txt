@@ -1,0 +1,22 @@
+CSE100 PA4 extention explanation
+Cheng Qian
+A53209561
+
+the problem you solved:
+In this problem, I use the SocialNetwork dataset that the public files included.
+facebook_1000.txt / facebook_ucsd.txt
+When using FaceBook, we always receive such message "Tom, do you know XXX". This is a typical application on friend recommendation. In this assignment extension, I managed to implement this function. I will recommend those who have a lot of common friends with the target person (which are apparently 2-degree people), and also those who are 2, 3, 4 or more people distance from the target person.
+
+
+how you solved it:
+After rebuild the graph through I first run BFS on the whole graph from the start node that the user input. Then I check those who are 2-people-distance away from our start node. Traverse these nodes and calculate each of their number of common friends with the start person and order these people by decresing order of number of common friends. Last but not least, I also recommend some further person that the start person might interested in(3,4,5,6 distance away), but no need to calculate their common friends number.
+
+
+how you tested it:
+I test it with the whold dataset facebook_ucsd.txt and my data structure and algorithm shows high time efficiency.
+
+
+how the grader should run your program (If this is not provided, you will receive a 0):
+Compile cmd: make extension
+run cmd: ./extension facebook_1000.txt #the user ID you want to query, for example, 480# res_ucsd.txt
+output: open the res_ucsd.txt to check the formatted output
